@@ -1,0 +1,25 @@
+*/com/bluemedora/**/ExampleSqlServerDataCollectorProperties.java
+/Users/Allen/Projects/example-sqlserver-dp/support_tool/build*
+*support_tool.jar
+
+build
+build.xml
+doc/generated/*
+# IntelliJ:
+**/*/workspace.xml
+**/*/vcs.xml
+**/*/META-INF/
+**/*/uiDesigner.xml
+**/*/tasks.xml
+**/*/dictionaries/*.xml
+# IntelliJ artifact output:
+out/*
+# IntelliJ compiler output:
+output/*
+
+# OSX:
+.DS_Store
+
+# Miscellaneous:
+.vscode
+

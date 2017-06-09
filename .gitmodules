@@ -1,0 +1,6 @@
+[submodule "ex-uno-build-tools"]
+	path = ex-uno-build-tools
+	url = git@github.com:BlueMedora/ex-uno-build-tools.git
+[submodule "test-runner"]
+	path = test-runner
+	url = git@github.com:BlueMedora/test-runner.git

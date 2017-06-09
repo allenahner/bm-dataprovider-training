@@ -1,0 +1,22 @@
+---
+- :name: kotlin-reflect.jar
+  :version: ''
+  :url: kotlinlang.org
+  :copyright: Copyright 2000-2016 JetBrains
+  :license: APACHE-2.0
+  :license_text: ''
+  :document_required: 'true'
+- :name: kotlin-runtime-sources.jar
+  :version: ''
+  :url: kotlinlang.org
+  :copyright: Copyright 2000-2016 JetBrains
+  :license: APACHE-2.0
+  :license_text: ''
+  :document_required: 'true'
+- :name: kotlin-runtime.jar
+  :version: ''
+  :url: kotlinlang.org
+  :copyright: Copyright 2000-2016 JetBrains
+  :license: APACHE-2.0
+  :license_text: ''
+  :document_required: 'true'

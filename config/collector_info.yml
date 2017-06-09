@@ -1,0 +1,12 @@
+---
+:major_version: 1
+:minor_version: 0
+:patch_version: 0
+:context: ga
+:company: example
+:product: sqlserver
+:data_collector_class: com.bluemedora.example.sqlserver.ExampleSqlServerDataCollector
+:type: example.sqlserver
+:bm_product_code: bm.exuno.examplesqlserver
+:product_name: Example Sql Server Data Provider
+:description: Blue Medora Data Collector for Example Sql Server

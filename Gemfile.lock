@@ -1,0 +1,37 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    graphviz (0.3.0)
+    jenkins_api_client (1.4.3)
+      json
+      mixlib-shellout (>= 1.1.0)
+      nokogiri (~> 1.6.0)
+      socksify (>= 1.7.0)
+      terminal-table (>= 1.4.0)
+      thor (>= 0.16.0)
+    json (2.1.0)
+    mini_portile2 (2.0.0)
+    mixlib-shellout (2.2.7)
+    nokogiri (1.6.7)
+      mini_portile2 (~> 2.0.0.rc2)
+    rake (11.3.0)
+    ruby-graphviz (1.2.2)
+    socksify (1.7.1)
+    terminal-table (1.8.0)
+      unicode-display_width (~> 1.1, >= 1.1.1)
+    thor (0.19.4)
+    unicode-display_width (1.2.1)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  graphviz (= 0.3.0)!
+  jenkins_api_client (= 1.4.3)!
+  json!
+  nokogiri (= 1.6.7)!
+  rake (= 11.3.0)!
+  ruby-graphviz (= 1.2.2)!
+
+BUNDLED WITH
+   1.13.6

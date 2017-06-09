@@ -1,0 +1,10 @@
+---
+- :name: ConnectionName
+  :default: true
+  :connection_args:
+    username: USERNAME
+    password: PASSWORD
+- :name: AnotherConnection
+  :connection_args:
+    username: USERNAME
+    password: PASSWORD
