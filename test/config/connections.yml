@@ -1,10 +1,12 @@
 ---
-- :name: ConnectionName
+- :name: GoodConnection
   :default: true
   :connection_args:
-    username: USERNAME
-    password: PASSWORD
-- :name: AnotherConnection
+    username: root
+    password: password
+    host: rh6kb
+- :name: BadConnection
   :connection_args:
-    username: USERNAME
-    password: PASSWORD
+    username: root
+    password: WrongPassword!
+    host: rh6kb

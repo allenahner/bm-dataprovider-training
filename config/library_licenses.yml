@@ -20,3 +20,10 @@
   :license: APACHE-2.0
   :license_text: ''
   :document_required: 'true'
+- :name: jsch-0.1.54.jar
+  :version: 0.1.54
+  :url: jcraft.com
+  :copyright: Copyright 1998-2016 JCraft, Inc.
+  :license: BSD
+  :license_text: ''
+  :document_required: 'true'
