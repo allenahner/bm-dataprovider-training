@@ -1,7 +1,7 @@
 package com.bluemedora.example.sqlserver
 
+import com.bluemedora.example.sqlserver.definitions.ComputerDefinition
 import com.bluemedora.example.sqlserver.definitions.ProcessDefinition
-import com.bluemedora.exuno.IDataCollector
 import com.bluemedora.exuno.ISelfDescribingDataCollector
 import com.bluemedora.exuno.request.ConnectionInfo
 import com.bluemedora.exuno.result.*
@@ -72,8 +72,15 @@ class ExampleSqlServerDataCollector : ISelfDescribingDataCollector {
         return ExampleSqlServerCollector.collect(connectionInfo)
     }
 
-    companion object{
+    companion object {
         val COLLECTION_RESULT_DEFINITION: CollectionResultDefinition = CollectionResultDefinition()
-                .withResourceDefinition(ProcessDefinition.definition)
+                .withResourceDefinition(ProcessDefinition.definition
+                                                .withEventDefinition(ProcessDefinition.cpuEvent)
+                                                .withEventDefinition(ProcessDefinition.memEvent)
+                )
+                .withResourceDefinition(ComputerDefinition.definition
+                                                .withEventDefinition(ComputerDefinition.cpuEvent)
+                                                .withEventDefinition(ComputerDefinition.memEvent)
+                )
     }
 }

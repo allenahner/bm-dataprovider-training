@@ -3,7 +3,6 @@ package com.bluemedora.example.sqlserver
 import io.kotlintest.KTestJUnitRunner
 import io.kotlintest.matchers.shouldBe
 import io.kotlintest.specs.ShouldSpec
-import io.kotlintest.TestCaseContext
 import org.junit.runner.RunWith
 
 @RunWith(KTestJUnitRunner::class)
