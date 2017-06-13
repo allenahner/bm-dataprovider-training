@@ -11,7 +11,7 @@ object ComputerDefinition {
                     MetricDefinition("hostname", "Hostname")
                             .withUnits(ExUnoUnit.UNITLESS)
                             .asString()
-                            .asKey()
+                            .asProperty()
                             .withDescription("Hostname")
             )
     val cpuEvent: EventDefinition = EventDefinition("cpu_limit", "CPU has reached a critical state")

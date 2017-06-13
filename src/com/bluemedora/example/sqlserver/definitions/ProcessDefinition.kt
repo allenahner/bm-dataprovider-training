@@ -16,12 +16,10 @@ object ProcessDefinition {
                     MetricDefinition("cpu", "CPU Usage")
                             .withUnits(ExUnoUnit.PERCENT)
                             .asFloat()
-                            .asKey()
                             .withDescription("CPU Usage."),
                     MetricDefinition("mem", "Memory Usage")
                             .withUnits(ExUnoUnit.PERCENT)
                             .asFloat()
-                            .asKey()
                             .withDescription("Memory Usage.")
             )
     val cpuEvent: EventDefinition = EventDefinition("cpu_limit", "CPU has reached a critical state for a process")

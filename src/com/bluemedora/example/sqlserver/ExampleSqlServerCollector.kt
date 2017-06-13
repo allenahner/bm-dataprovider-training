@@ -25,7 +25,7 @@ internal class ExampleSqlServerCollector {
             return result
         }
 
-        fun addComputerResource(connectionInfo: ConnectionInfo, result: ExUnoCollectionResult, systemResources: Map<String, Double>) {
+        private fun addComputerResource(connectionInfo: ConnectionInfo, result: ExUnoCollectionResult, systemResources: Map<String, Double>) {
             val session = sshConnect(connectionInfo)
             session.connect()
             val hostname = performSSHCommand(session, "hostname -A")
@@ -48,7 +48,7 @@ internal class ExampleSqlServerCollector {
             }
         }
 
-        fun addChildProcesses(connectionInfo: ConnectionInfo, result: ExUnoCollectionResult) {
+        private fun addChildProcesses(connectionInfo: ConnectionInfo, result: ExUnoCollectionResult) {
             val session = sshConnect(connectionInfo)
             session.connect()
             val children = performSSHCommand(session, "ps -eo pid,ppid")
@@ -76,7 +76,7 @@ internal class ExampleSqlServerCollector {
 
             for (process in processes) {
                 val metrics = getMetricsFromTop(process)
-                if(metrics.isEmpty())
+                if (metrics.isEmpty())
                     continue
                 else {
                     val pid = metrics["pid"]!!.toInt()
@@ -116,7 +116,7 @@ internal class ExampleSqlServerCollector {
             return metrics
         }
 
-        fun getAllProcesses(connectionInfo: ConnectionInfo): List<String> {
+        private fun getAllProcesses(connectionInfo: ConnectionInfo): List<String> {
 
             val session = sshConnect(connectionInfo)
             session.connect()
@@ -129,7 +129,7 @@ internal class ExampleSqlServerCollector {
             return processes
         }
 
-        fun performSSHCommand(session: Session, cmd: String): List<String> {
+        private fun performSSHCommand(session: Session, cmd: String): List<String> {
             val output = mutableListOf<String>()
             try {
                 val channel = session.openChannel("exec") as ChannelExec
@@ -162,7 +162,7 @@ internal class ExampleSqlServerCollector {
             return output
         }
 
-        fun sshConnect(connectionInfo: ConnectionInfo): Session {
+        private fun sshConnect(connectionInfo: ConnectionInfo): Session {
             val config = java.util.Properties()
             val host = connectionInfo.get("host")
             val username = connectionInfo.get("username")
