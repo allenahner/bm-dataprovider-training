@@ -32,7 +32,6 @@ internal class ExampleSqlServerCollector {
                 val mem = m.group(3).toFloat()
                 totalMem += mem
 
-
                 val pidMetric = ExUnoDefinition.toMetric("process", "id", pid)
                 val cpuMetric = ExUnoDefinition.toMetric("process", "cpu", cpu)
                 val memMetric = ExUnoDefinition.toMetric("process", "mem", mem)
@@ -48,8 +47,25 @@ internal class ExampleSqlServerCollector {
 
                 result.addResource(processResource)
             }
+            val session = sshConnect(connectionInfo)
+            session.connect()
+            val children = performSSHCommand(session, "ps -eo pid,ppid")
+            val patt = Pattern.compile("(\\d+)\\s*(\\d+)")
 
-            addChildProcesses(connectionInfo, result)
+            for(child in children){
+                val mm = patt.matcher(child)
+                if(!mm.find())
+                    continue
+                val id = mm.group(1).toInt()
+                val ppid = mm.group(2).toInt()
+                val parentR = result.getResourcesWithMetricValue("process", "id", ppid)
+                val childR = result.getResourcesWithMetricValue("process", "id", id)
+                if(parentR.isNotEmpty() && childR.isNotEmpty()){
+                    result.addParentChildRelationship(parentR.first(), childR.first())
+                }
+            }
+            session.disconnect()
+            //addChildProcesses(connectionInfo, result)
 
             addComputerResource(connectionInfo, result, totalCpu, totalMem)
 
