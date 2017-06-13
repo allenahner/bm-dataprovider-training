@@ -26,7 +26,7 @@ class ExampleSqlServerDataCollector : ISelfDescribingDataCollector {
     }
 
     override fun describeTestConnectionResult(): ITestConnectionResultDefinition {
-        return ExampleSqlServerTester.getTestConnectionResultDefinition();
+        return ExampleSqlServerTester.getTestConnectionResultDefinition()
     }
 
     override fun describeCollectionResult(): ICollectionResultDefinition {

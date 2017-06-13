@@ -17,109 +17,106 @@ internal class ExampleSqlServerCollector {
     companion object {
         fun collect(connectionInfo: ConnectionInfo): ICollectionResult {
             val result = ExUnoCollectionResult()
-            var totalCpu = 0.0
-            var totalMem = 0.0
 
-            val processes = time("Retrieving all processes from " + connectionInfo.get(ConnectionInfo.HOST)) { ExampleSqlServerCollector.getAllProcesses(connectionInfo) }
-            for (process in processes) {
-                val pat = Pattern.compile("(\\d+)\\s*(\\d+\\.\\d+)\\s*(\\d+\\.\\d+)")
-                val m = pat.matcher(process)
-                if (!m.find())
-                    continue
-                val pid = m.group(1).toInt()
-                val cpu = m.group(2).toFloat()
-                totalCpu += cpu
-                val mem = m.group(3).toFloat()
-                totalMem += mem
-
-                val pidMetric = ExUnoDefinition.toMetric("process", "id", pid)
-                val cpuMetric = ExUnoDefinition.toMetric("process", "cpu", cpu)
-                val memMetric = ExUnoDefinition.toMetric("process", "mem", mem)
-                val processResource = ExUnoDefinition.toResource("process", listOf(pidMetric, cpuMetric, memMetric))
-                if (cpu > 90) {
-                    processResource.addEvent(ExUnoDefinition.toEvent("computer", "cpu_limit", IResourceEvent.Severity.SERIOUS, "Critical CPU usage reached by process '$pid'."))
-                    ExUnoLogger.warn("Critical CPU execution reached at " + DecimalFormat("#.##").format(cpu) + "% usage by process '$pid'.")
-                }
-                if (mem > 90) {
-                    processResource.addEvent(ExUnoDefinition.toEvent("computer", "mem_limit", IResourceEvent.Severity.SERIOUS, "Critical system memory usage reached by process '$pid'."))
-                    ExUnoLogger.warn("Critical system memory reached at " + DecimalFormat("#.##").format(mem) + "% usage by process '$pid'")
-                }
-
-                result.addResource(processResource)
-            }
-            val session = sshConnect(connectionInfo)
-            session.connect()
-            val children = performSSHCommand(session, "ps -eo pid,ppid")
-            val patt = Pattern.compile("(\\d+)\\s*(\\d+)")
-
-            for(child in children){
-                val mm = patt.matcher(child)
-                if(!mm.find())
-                    continue
-                val id = mm.group(1).toInt()
-                val ppid = mm.group(2).toInt()
-                val parentR = result.getResourcesWithMetricValue("process", "id", ppid)
-                val childR = result.getResourcesWithMetricValue("process", "id", id)
-                if(parentR.isNotEmpty() && childR.isNotEmpty()){
-                    result.addParentChildRelationship(parentR.first(), childR.first())
-                }
-            }
-            session.disconnect()
-            //addChildProcesses(connectionInfo, result)
-
-            addComputerResource(connectionInfo, result, totalCpu, totalMem)
+            val systemInfo = time("Adding all system processes from " + connectionInfo.get(ConnectionInfo.HOST)) { addAllProcesses(connectionInfo, result) }
+            time("Adding parent PIDs") { addChildProcesses(connectionInfo, result) }
+            time("Adding computer resource") { addComputerResource(connectionInfo, result, systemInfo) }
 
             return result
         }
 
-        private fun addComputerResource(connectionInfo: ConnectionInfo, result: ExUnoCollectionResult, cpuUsage: Double, memUsage: Double) {
+        fun addComputerResource(connectionInfo: ConnectionInfo, result: ExUnoCollectionResult, systemResources: Map<String, Double>) {
             val session = sshConnect(connectionInfo)
             session.connect()
             val hostname = performSSHCommand(session, "hostname -A")
             session.disconnect()
+            val cpu: Double? = systemResources["cpu"]
+            val mem: Double? = systemResources["mem"]
+
             if (hostname.isNotEmpty()) {
                 val hostnameMetric = ExUnoDefinition.toMetric("computer", "hostname", hostname.first())
                 val computerResource = ExUnoDefinition.toResource("computer", hostnameMetric)
-                if (cpuUsage > 1) {
+                if (cpu!! > 90) {
                     computerResource.addEvent(ExUnoDefinition.toEvent("computer", "cpu_limit", IResourceEvent.Severity.SERIOUS, "Critical CPU usage reached."))
-                    ExUnoLogger.warn("Critical CPU execution reached at " + DecimalFormat("#.##").format(cpuUsage) + "% usage")
+                    ExUnoLogger.warn("Critical CPU execution reached at " + DecimalFormat("#.##").format(cpu) + "% usage")
                 }
-                if (memUsage > 1) {
+                if (mem!! > 90) {
                     computerResource.addEvent(ExUnoDefinition.toEvent("computer", "mem_limit", IResourceEvent.Severity.SERIOUS, "Critical system memory usage reached."))
-                    ExUnoLogger.warn("Critical system memory reached at " + DecimalFormat("#.##").format(memUsage) + "% usage")
+                    ExUnoLogger.warn("Critical system memory reached at " + DecimalFormat("#.##").format(mem) + "% usage")
                 }
                 result.addResource(computerResource)
             }
         }
 
-        private fun addChildProcesses(connectionInfo: ConnectionInfo, result: ExUnoCollectionResult) {
+        fun addChildProcesses(connectionInfo: ConnectionInfo, result: ExUnoCollectionResult) {
             val session = sshConnect(connectionInfo)
             session.connect()
+            val children = performSSHCommand(session, "ps -eo pid,ppid")
+            val pat = Pattern.compile("(\\d+)\\s*(\\d+)")
 
-            for (resource in result.resources) {
-                val pid = resource.getMetric("id").intValue
-                val children = time("Getting all children of process $pid") { getChildProcesses(session, pid) }
-                for (child in children) {
-                    val childResource = result.getResourcesWithMetricValue("process", "id", child)
-                    if (childResource.isEmpty())
-                        ExUnoLogger.info("Child process '$child' could not be found in result.")
-                    else
-                        result.addParentChildRelationship(resource, childResource.first())
+            for (child in children) {
+                val m = pat.matcher(child)
+                if (!m.find())
+                    continue
+                val pid = m.group(1).toInt()
+                val ppid = m.group(2).toInt()
+                val parentR = result.getResourcesWithMetricValue("process", "id", ppid)
+                val childR = result.getResourcesWithMetricValue("process", "id", pid)
+                if (parentR.isNotEmpty() && childR.isNotEmpty()) {
+                    result.addParentChildRelationship(parentR.first(), childR.first())
                 }
             }
-
             session.disconnect()
         }
 
-        private fun getChildProcesses(session: Session, pid: Int): List<String> {
+        fun addAllProcesses(connectionInfo: ConnectionInfo, result: ExUnoCollectionResult): Map<String, Double> {
+            val processes = ExampleSqlServerCollector.getAllProcesses(connectionInfo)
+            var totalCpu = 0.0
+            var totalMem = 0.0
 
-            val cmd = "pgrep -P $pid"
-            val children = performSSHCommand(session, cmd)
+            for (process in processes) {
+                val metrics = getMetricsFromTop(process)
+                if(metrics.isEmpty())
+                    continue
+                else {
+                    val pid = metrics["pid"]!!.toInt()
+                    val cpu = metrics["cpu"]!!.toFloat()
+                    totalCpu += cpu
+                    val mem = metrics["mem"]!!.toFloat()
+                    totalMem += mem
 
-            return children
+                    val pidMetric = ExUnoDefinition.toMetric("process", "id", pid)
+                    val cpuMetric = ExUnoDefinition.toMetric("process", "cpu", cpu)
+                    val memMetric = ExUnoDefinition.toMetric("process", "mem", mem)
+                    val processResource = ExUnoDefinition.toResource("process", listOf(pidMetric, cpuMetric, memMetric))
+                    if (cpu > 90) {
+                        processResource.addEvent(ExUnoDefinition.toEvent("computer", "cpu_limit", IResourceEvent.Severity.SERIOUS, "Critical CPU usage reached by process '$pid'."))
+                        ExUnoLogger.warn("Critical CPU execution reached at " + DecimalFormat("#.##").format(cpu) + "% usage by process '$pid'.")
+                    }
+                    if (mem > 90) {
+                        processResource.addEvent(ExUnoDefinition.toEvent("computer", "mem_limit", IResourceEvent.Severity.SERIOUS, "Critical system memory usage reached by process '$pid'."))
+                        ExUnoLogger.warn("Critical system memory reached at " + DecimalFormat("#.##").format(mem) + "% usage by process '$pid'")
+                    }
+
+                    result.addResource(processResource)
+                }
+            }
+
+            val systemInfo = mapOf("cpu" to totalCpu, "mem" to totalCpu)
+            return systemInfo
         }
 
-        private fun getAllProcesses(connectionInfo: ConnectionInfo): List<String> {
+        fun getMetricsFromTop(line: String): Map<String, Number> {
+            val pat = Pattern.compile("(\\d+)\\s*(\\d+\\.\\d+)\\s*(\\d+\\.\\d+)")
+            val m = pat.matcher(line)
+            if (!m.find())
+                return emptyMap()
+
+            val metrics: Map<String, Number> = mapOf("pid" to m.group(1).toInt(), "cpu" to m.group(2).toFloat(), "mem" to m.group(3).toFloat())
+            return metrics
+        }
+
+        fun getAllProcesses(connectionInfo: ConnectionInfo): List<String> {
 
             val session = sshConnect(connectionInfo)
             session.connect()
@@ -132,7 +129,7 @@ internal class ExampleSqlServerCollector {
             return processes
         }
 
-        private fun performSSHCommand(session: Session, cmd: String): List<String> {
+        fun performSSHCommand(session: Session, cmd: String): List<String> {
             val output = mutableListOf<String>()
             try {
                 val channel = session.openChannel("exec") as ChannelExec
@@ -165,7 +162,7 @@ internal class ExampleSqlServerCollector {
             return output
         }
 
-        private fun sshConnect(connectionInfo: ConnectionInfo): Session {
+        fun sshConnect(connectionInfo: ConnectionInfo): Session {
             val config = java.util.Properties()
             val host = connectionInfo.get("host")
             val username = connectionInfo.get("username")
@@ -179,7 +176,5 @@ internal class ExampleSqlServerCollector {
             return session
         }
     }
-
-
 }
 
