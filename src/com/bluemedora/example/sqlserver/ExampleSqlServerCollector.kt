@@ -30,18 +30,18 @@ internal class ExampleSqlServerCollector {
             session.connect()
             val hostname = performSSHCommand(session, "hostname -A")
             session.disconnect()
-            val cpu: Double? = systemResources["cpu"]
-            val mem: Double? = systemResources["mem"]
+            val cpu: Double? = systemResources["cpu"]!!.toDouble()
+            val mem: Double? = systemResources["mem"]!!.toDouble()
 
             if (hostname.isNotEmpty()) {
                 val hostnameMetric = ExUnoDefinition.toMetric("computer", "hostname", hostname.first())
                 val computerResource = ExUnoDefinition.toResource("computer", hostnameMetric)
                 if (cpu!! > 90) {
-                    computerResource.addEvent(ExUnoDefinition.toEvent("computer", "cpu_limit", IResourceEvent.Severity.SERIOUS, "Critical CPU usage reached."))
+                    computerResource.addEvent(ExUnoDefinition.toEvent("computer", "computer_cpu_limit", IResourceEvent.Severity.CRITICAL, "Critical CPU usage reached."))
                     ExUnoLogger.warn("Critical CPU execution reached at " + DecimalFormat("#.##").format(cpu) + "% usage")
                 }
                 if (mem!! > 90) {
-                    computerResource.addEvent(ExUnoDefinition.toEvent("computer", "mem_limit", IResourceEvent.Severity.SERIOUS, "Critical system memory usage reached."))
+                    computerResource.addEvent(ExUnoDefinition.toEvent("computer", "computer_mem_limit", IResourceEvent.Severity.CRITICAL, "Critical system memory usage reached."))
                     ExUnoLogger.warn("Critical system memory reached at " + DecimalFormat("#.##").format(mem) + "% usage")
                 }
                 result.addResource(computerResource)
@@ -71,38 +71,55 @@ internal class ExampleSqlServerCollector {
 
         fun addAllProcesses(connectionInfo: ConnectionInfo, result: ExUnoCollectionResult): Map<String, Double> {
             val processes = ExampleSqlServerCollector.getAllProcesses(connectionInfo)
-            var totalCpu = 0.0
-            var totalMem = 0.0
+            var totalCpu = 0.00
+            var totalMem = 0.00
+            var i = 0
 
             for (process in processes) {
-                val metrics = getMetricsFromTop(process)
-                if (metrics.isEmpty())
+                if (i == 0) {
+                    i++
                     continue
-                else {
-                    val pid = metrics["pid"]!!.toInt()
-                    val cpu = metrics["cpu"]!!.toFloat()
-                    totalCpu += cpu
-                    val mem = metrics["mem"]!!.toFloat()
-                    totalMem += mem
-
-                    val pidMetric = ExUnoDefinition.toMetric("process", "id", pid)
-                    val cpuMetric = ExUnoDefinition.toMetric("process", "cpu", cpu)
-                    val memMetric = ExUnoDefinition.toMetric("process", "mem", mem)
-                    val processResource = ExUnoDefinition.toResource("process", listOf(pidMetric, cpuMetric, memMetric))
-                    if (cpu > 90) {
-                        processResource.addEvent(ExUnoDefinition.toEvent("computer", "cpu_limit", IResourceEvent.Severity.SERIOUS, "Critical CPU usage reached by process '$pid'."))
-                        ExUnoLogger.warn("Critical CPU execution reached at " + DecimalFormat("#.##").format(cpu) + "% usage by process '$pid'.")
-                    }
-                    if (mem > 90) {
-                        processResource.addEvent(ExUnoDefinition.toEvent("computer", "mem_limit", IResourceEvent.Severity.SERIOUS, "Critical system memory usage reached by process '$pid'."))
-                        ExUnoLogger.warn("Critical system memory reached at " + DecimalFormat("#.##").format(mem) + "% usage by process '$pid'")
-                    }
-
-                    result.addResource(processResource)
                 }
+
+                if (i == 1) {
+                    val pat = Pattern.compile("[:\\(\\)\\D\\s]+(\\d?\\d?\\d\\.\\d)%us.*")
+                    val m = pat.matcher(process)
+
+                    if (m.find()) {
+                        totalCpu = m.group(1).toDouble()
+                    }
+                } else if (i == 2) {
+                    totalMem = process.toDouble()
+                } else {
+
+                    val metrics = getMetricsFromTop(process)
+                    if (metrics.isEmpty())
+                        continue
+                    else {
+                        val pid = metrics["pid"]!!.toInt()
+                        val cpu = metrics["cpu"]!!.toFloat()
+                        val mem = metrics["mem"]!!.toFloat()
+
+                        val pidMetric = ExUnoDefinition.toMetric("process", "id", pid)
+                        val cpuMetric = ExUnoDefinition.toMetric("process", "cpu", cpu)
+                        val memMetric = ExUnoDefinition.toMetric("process", "mem", mem)
+                        val processResource = ExUnoDefinition.toResource("process", listOf(pidMetric, cpuMetric, memMetric))
+                        if (cpu > 90) {
+                            processResource.addEvent(ExUnoDefinition.toEvent("process", "cpu_limit", IResourceEvent.Severity.CRITICAL, "Critical CPU usage reached by process '$pid'."))
+                            ExUnoLogger.warn("Critical CPU execution reached at " + DecimalFormat("#.##").format(cpu) + "% usage by process '$pid'.")
+                        }
+                        if (mem > 90) {
+                            processResource.addEvent(ExUnoDefinition.toEvent("process", "mem_limit", IResourceEvent.Severity.CRITICAL, "Critical system memory usage reached by process '$pid'."))
+                            ExUnoLogger.warn("Critical system memory reached at " + DecimalFormat("#.##").format(mem) + "% usage by process '$pid'")
+                        }
+
+                        result.addResource(processResource)
+                    }
+                }
+                i++
             }
 
-            val systemInfo = mapOf("cpu" to totalCpu, "mem" to totalCpu)
+            val systemInfo = mapOf("cpu" to totalCpu, "mem" to totalMem)
             return systemInfo
         }
 
@@ -121,7 +138,10 @@ internal class ExampleSqlServerCollector {
             val session = sshConnect(connectionInfo)
             session.connect()
 
-            val cmd = "top -bn 1 | grep \"^ \" | awk '{printf(\"%-8s %-8s %-8s\\n\", $1, $9, $10); }'"
+            val cmd = "(top -bn 2 | grep \"Cpu(s):\";) && " +
+                      "((awk '/MemFree/{printf \"%d\\t\", $2;}' < /proc/meminfo ; awk '/MemTotal/{printf \"%d\\n\", $2;}' < /proc/meminfo;) | awk '{printf \"%f\\n\", 100 - (($1/$2)*100)}';) && " +
+                      "(top -bn 1 | grep \"^\" | awk '{printf(\"%s\\t%s\\t%s\\n\", $1, $9, $10); }';)"
+
             val processes = performSSHCommand(session, cmd)
 
             session.disconnect()

@@ -10,10 +10,12 @@ GEM
       terminal-table (>= 1.4.0)
       thor (>= 0.16.0)
     json (2.1.0)
+    json (2.1.0-java)
     mini_portile2 (2.0.0)
     mixlib-shellout (2.2.7)
     nokogiri (1.6.7)
       mini_portile2 (~> 2.0.0.rc2)
+    nokogiri (1.6.7-java)
     rake (11.3.0)
     ruby-graphviz (1.2.2)
     socksify (1.7.1)
@@ -23,6 +25,7 @@ GEM
     unicode-display_width (1.2.1)
 
 PLATFORMS
+  java
   ruby
 
 DEPENDENCIES
